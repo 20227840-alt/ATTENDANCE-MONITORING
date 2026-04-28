@@ -1,0 +1,17 @@
+﻿@page
+@model finalsproject.Pages.HomeModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div style="text-align:center; margin-top:150px;">
+    <h1 style="font-size:3rem; margin-bottom:10px;">Welcome</h1>
+    <p style="color:gray; margin-bottom:40px;">Please login or create an account to continue.</p>
+
+    <a asp-page="/Login" class="btn btn-primary" style="padding:12px 40px; font-size:1rem; margin-right:10px;">
+        Login
+    </a>
+    <a asp-page="/Signup" class="btn btn-outline-primary" style="padding:12px 40px; font-size:1rem;">
+        Sign Up
+    </a>
+</div>

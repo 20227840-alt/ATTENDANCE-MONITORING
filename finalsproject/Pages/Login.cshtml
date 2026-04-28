@@ -1,0 +1,44 @@
+﻿@page
+@model finalsproject.Pages.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div style="max-width:400px; margin:80px auto; padding:30px; border:1px solid #ddd; border-radius:10px;">
+    <h2 style="text-align:center; margin-bottom:24px;">Login</h2>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <p style="color:red; text-align:center;">@Model.ErrorMessage</p>
+    }
+
+    <form method="post">
+        <div style="margin-bottom:16px;">
+            <label asp-for="Input.Email">Email</label>
+            <input asp-for="Input.Email" type="email" class="form-control" placeholder="you@example.com" />
+            <span asp-validation-for="Input.Email" style="color:red;"></span>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label asp-for="Input.Password">Password</label>
+            <input asp-for="Input.Password" type="password" class="form-control" placeholder="••••••••" />
+            <span asp-validation-for="Input.Password" style="color:red;"></span>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label>
+                <input asp-for="Input.RememberMe" type="checkbox" /> Remember me
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Sign in</button>
+    </form>
+
+    <p style="text-align:center; margin-top:16px;">
+        Don't have an account? <a asp-page="/Signup">Create one</a>
+    </p>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
