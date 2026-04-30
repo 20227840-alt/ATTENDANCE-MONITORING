@@ -1,128 +1,151 @@
-﻿@page
-@model finalsproject.Pages.LoginModel
-@{
-    ViewData["Title"] = "Login";
-}
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 
-<div style="max-width:400px; margin:80px auto; padding:30px; border:1px solid #ddd; border-radius:10px;">
-    <h2 style="text-align:center; margin-bottom:24px;">Login</h2>
-
-    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+namespace finalsproject.Pages
+{
+    public class LoginModel : PageModel
     {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            @Model.SuccessMessage
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
+        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly ILogger<LoginModel> _logger;
 
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            @Model.ErrorMessage
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-
-    <form method="post" id="loginForm">
-        <div style="margin-bottom:16px;">
-            <label asp-for="Input.Email" class="form-label">Email</label>
-            <input asp-for="Input.Email" type="email" class="form-control" placeholder="you@example.com" autocomplete="email" />
-            <span asp-validation-for="Input.Email" class="text-danger"></span>
-        </div>
-
-        <div style="margin-bottom:16px;">
-            <label asp-for="Input.Password" class="form-label">Password</label>
-            <input asp-for="Input.Password" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password" />
-            <span asp-validation-for="Input.Password" class="text-danger"></span>
-        </div>
-
-        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
-            <label style="margin:0;">
-                <input asp-for="Input.RememberMe" type="checkbox" /> Remember me
-            </label>
-            <a asp-page="/ForgotPassword" style="font-size:14px;">Forgot password?</a>
-        </div>
-
-        <button type="submit" class="btn btn-primary w-100" id="loginButton">
-            <span id="buttonText">Sign in</span>
-            <span id="spinner" style="display:none;">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                Loading...
-            </span>
-        </button>
-    </form>
-
-    <hr style="margin:20px 0;" />
-
-    <p style="text-align:center; margin-top:16px;">
-        Don't have an account? <a asp-page="/Signup">Create one</a>
-    </p>
-</div>
-
-<style>
-    /* Additional styling for better UX */
-    .alert {
-        animation: slideDown 0.3s ease-out;
-    }
-    
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
+        public LoginModel(
+            SignInManager<IdentityUser> signInManager,
+            UserManager<IdentityUser> userManager,
+            ILogger<LoginModel> logger)
+        {
+            _signInManager = signInManager;
+            _userManager = userManager;
+            _logger = logger;
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    button:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-    
-    .form-control:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25);
-    }
-</style>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    
-    <script>
-        // Prevent multiple form submissions
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const button = document.getElementById('loginButton');
-            const buttonText = document.getElementById('buttonText');
-            const spinner = document.getElementById('spinner');
-            
-            // Disable button and show spinner
-            button.disabled = true;
-            buttonText.style.display = 'none';
-            spinner.style.display = 'inline-block';
-            
-            // Re-enable if validation fails after 1 second (fallback)
-            setTimeout(function() {
-                if (!document.querySelector('.field-validation-error')) {
-                    // Form is submitting, keep disabled
-                } else {
-                    button.disabled = false;
-                    buttonText.style.display = 'inline';
-                    spinner.style.display = 'none';
-                }
-            }, 1000);
-        });
+        [BindProperty]
+        public InputModel Input { get; set; } = new();
+
+        public string? ErrorMessage { get; set; }
         
-        // Auto-dismiss alerts after 5 seconds
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                setTimeout(function() {
-                    bsAlert.close();
-                }, 5000);
-            });
-        }, 100);
-    </script>
+        [TempData]
+        public string? SuccessMessage { get; set; }
+        
+        public string ReturnUrl { get; set; } = string.Empty;
+
+        public class InputModel
+        {
+            [Required(ErrorMessage = "Email is required")]
+            [EmailAddress(ErrorMessage = "Please enter a valid email address")]
+            [Display(Name = "Email")]
+            public string Email { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "Password is required")]
+            [DataType(DataType.Password)]
+            [Display(Name = "Password")]
+            public string Password { get; set; } = string.Empty;
+
+            [Display(Name = "Remember me")]
+            public bool RememberMe { get; set; }
+        }
+
+        public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
+        {
+            // If user is already logged in, redirect to home
+            if (User.Identity?.IsAuthenticated ?? false)
+            {
+                return RedirectToPage("/Index");
+            }
+            
+            ReturnUrl = returnUrl ?? Url.Content("~/");
+            
+            // Clear any existing external cookies
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+        {
+            returnUrl ??= Url.Content("~/");
+            ReturnUrl = returnUrl;
+
+            if (!ModelState.IsValid)
+                return Page();
+
+            // Find user by email
+            var user = await _userManager.FindByEmailAsync(Input.Email);
+            if (user == null)
+            {
+                ErrorMessage = "Invalid email or password.";
+                _logger.LogWarning($"Login failed: User with email {Input.Email} not found");
+                return Page();
+            }
+
+            // Check if email is confirmed (optional but recommended)
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+            {
+                ErrorMessage = "Please confirm your email before logging in. Check your inbox for the confirmation link.";
+                _logger.LogWarning($"Login failed: Email not confirmed for {Input.Email}");
+                return Page();
+            }
+
+            // Check if account is locked out
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                ErrorMessage = "Your account has been temporarily locked due to too many failed attempts. Please try again later.";
+                _logger.LogWarning($"Login failed: Account locked for {Input.Email}");
+                return Page();
+            }
+
+            // Attempt login
+            var result = await _signInManager.PasswordSignInAsync(
+                Input.Email, 
+                Input.Password, 
+                Input.RememberMe, 
+                lockoutOnFailure: true); // Enable lockout on failure
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"User {Input.Email} logged in successfully");
+                
+                // Record last login time (adds a claim you can display later)
+                await UpdateLastLoginTime(user);
+                
+                // Redirect to return URL or home
+                return LocalRedirect(returnUrl);
+            }
+            
+            if (result.RequiresTwoFactor)
+            {
+                return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+            }
+            
+            if (result.IsLockedOut)
+            {
+                _logger.LogWarning($"User {Input.Email} account locked out after multiple failures");
+                ErrorMessage = "Too many failed attempts. Your account has been temporarily locked. Please try again later.";
+                return Page();
+            }
+            
+            // Handle failed login
+            ErrorMessage = "Invalid email or password.";
+            _logger.LogWarning($"Login failed for user {Input.Email}");
+            return Page();
+        }
+        
+        private async Task UpdateLastLoginTime(IdentityUser user)
+        {
+            // Optional: Store last login time as a claim
+            var claims = await _userManager.GetClaimsAsync(user);
+            var lastLoginClaim = claims.FirstOrDefault(c => c.Type == "LastLoginTime");
+            
+            var newClaim = new Claim("LastLoginTime", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            
+            if (lastLoginClaim != null)
+                await _userManager.ReplaceClaimAsync(user, lastLoginClaim, newClaim);
+            else
+                await _userManager.AddClaimAsync(user, newClaim);
+        }
+    }
 }
